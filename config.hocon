@@ -29,6 +29,16 @@ collector {
     CP = "NOI DSP COR NID PSA OUR IND COM NAV STA"
   }
 
+  # Optional cross domain policy configuration.
+  # To disable, remove the "crossDomain" configuration and the collector will respond with a 404 to
+  # the /crossdomain.xml route.
+  crossDomain {
+    # Domain that is granted access, *.acme.com will match http://acme.com and http://sub.acme.com
+    domain = "*"
+    # Whether to only grant access to HTTPS or both HTTPS and HTTP sources
+    secure = true
+  }
+
   # The collector returns a cookie to clients for user identification
   # with the following domain and expiration.
   cookie {
@@ -52,19 +62,20 @@ collector {
     name = "n3pc"
     # Network user id to fallback to when third-party cookies are blocked.
     fallbackNetworkUserId = "00000000-0000-4000-A000-000000000000"
+    # Optionally, specify the name of the header containing the originating protocol for use in the
+    # bounce redirect location. Use this if behind a load balancer that performs SSL termination.
+    # The value of this header must be http or https. Example, if behind an AWS Classic ELB.
+    forwardedProtocolHeader = "X-Forwarded-Proto"
   }
 
-  # Sinks currently supported are:
-  # 'kinesis' for writing Thrift-serialized records to a Kinesis stream
-  # 'kafka' for writing Thrift-serialized records to kafka
-  # 'stdout' for writing Base64-encoded Thrift-serialized records to stdout
-  #    Recommended settings for 'stdout' so each line printed to stdout
-  #    is a serialized record are:
-  #      1. Setting 'akka.loglevel = OFF' and 'akka.loggers = []'
-  #         to disable all logging.
-  #      2. Using 'sbt assembly' and 'java -jar ...' to disable
-  #         sbt logging.
-  sink = kinesis
+  # When enabled, the redirect url passed via the `u` query parameter is scanned for a placeholder
+  # token. All instances of that token are replaced withe the network ID. If the placeholder isn't
+  # specified, the default value is `${SP_NUID}`.
+  redirectMacro {
+    enabled = false
+    # Optional custom placeholder token (defaults to the literal `${SP_NUID}`)
+    placeholder = "[TOKEN]"
+  }
 
   streams {
     # Events which have successfully been collected will be stored in the good stream/topic
@@ -76,7 +87,12 @@ collector {
     # Whether to use the incoming event's ip as the partition key for the good stream/topic
     useIpAddressAsPartitionKey = false
 
-    kinesis {
+    sink {
+      # Choose between kinesis, kafka, nsq, or stdout.
+      # To use stdout, comment or remove everything in the "collector.streams.sink" section except
+      # "enabled" which should be set to "stdout".
+      enabled = kinesis
+
       # Region where the streams are located
       region = "us-east-1"
 
@@ -98,13 +114,17 @@ collector {
         minBackoff = 3000
         maxBackoff = 600000
       }
-    }
 
-    kafka {
-      brokers = "{{kafkaBrokers}}"
+      # Or Kafka
+      #brokers = "{{kafkaBrokers}}"
+      ## Number of retries to perform before giving up on sending a record
+      #retries = 0
 
-      # Number of retries to perform before giving up on sending a record
-      retries = 0
+      # Or NSQ
+      ## Host name for nsqd
+      #host = "{{nsqHost}}"
+      ## TCP port for nsqd, 4150 by default
+      #port = {{nsqdPort}}
     }
 
     # Incoming events are stored in a buffer before being sent to Kinesis/Kafka.
