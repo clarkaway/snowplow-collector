@@ -49,7 +49,7 @@ collector {
     # The domain is optional and will make the cookie accessible to other
     # applications on the domain. Comment out this line to tie cookies to
     # the collector's full domain
-    domain = ".cru.org"
+    # domain = ".cru.org"
   }
 
   # When enabled and the cookie specified above is missing, performs a redirect to itself to check
